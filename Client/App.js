@@ -6,7 +6,6 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import CoursesScreen from "./CoursesScreen";
 import StudentsScreen from "./StudentsScreen";
-
 // Pantalla de inicio
 function HomeScreen({ navigation }) {
   return (

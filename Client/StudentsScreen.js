@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import PrincipalButton from "./components/PrincipalButton";
 import { Picker } from "@react-native-picker/picker"; // Asegúrate de instalar esta librería si no está incluida en tu proyecto
-
 // Mock de datos de estudiantes para el ejemplo
 const mockCourses = [
   { id: "1", name: "Matemáticas" },
