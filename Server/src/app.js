@@ -15,5 +15,8 @@ app.use(express.urlencoded({ extended: false })); //para JSON encoding
 app.use(studentsRoutes);
 app.use(coursesRoutes);
 app.use(coursesXStudentRoutes);
+// En tu servidor Express (server.js o app.js)
+const cors = require("cors");
 
+app.use(cors());
 export default app;

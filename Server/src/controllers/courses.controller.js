@@ -117,9 +117,18 @@ export const updateCourse = async (req, res) => {
       .query(
         "UPDATE Courses SET Name = @Name, Description = @Description WHERE Id = @Id;"
       );
-    result.rowsAffected[0] > 0
-      ? res.send("Course updated successfully.")
-      : res.status(404).send("Course not found.");
+    if (result.rowsAffected[0] > 0) {
+      // Si el curso fue actualizado, obtener los detalles actualizados y enviarlos en la respuesta
+      const updatedCourse = await pool
+        .request()
+        .input("Id", sql.Int, id)
+        .query("SELECT * FROM Courses WHERE Id = @Id;");
+
+      // Envía los detalles del curso actualizado como respuesta
+      res.status(200).json(updatedCourse.recordset[0] || {});
+    } else {
+      res.status(404).send("Course not found.");
+    }
   } catch (error) {
     res.status(500).send(error.message);
   }

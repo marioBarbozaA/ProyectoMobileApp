@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,53 +6,177 @@ import {
   TouchableOpacity,
   FlatList,
   Button,
+  Alert,
   Modal,
   TextInput,
 } from "react-native";
 import PrincipalButton from "./components/PrincipalButton";
 
-// Mock de datos de cursos para el ejemplo
-const mockCourses = [
-  { id: "1", name: "Matemáticas", description: "Curso básico de matemáticas" },
-  {
-    id: "2",
-    name: "Historia",
-    description: "Introducción a la historia universal",
-  },
-  // Añade más cursos según necesites
-];
+// URL FOR THE CONECCTION WITH THE SERVER
+const BASE_URL = "http://192.168.100.15:3000"; /// Con la IP del Wifi que esta conectado
+
+//CRUDS
+
+// Función para obtener todos los cursos desde la API
+const getCourses = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/courses`);
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || "Error al obtener los cursos");
+    }
+    const courses = await response.json();
+    return courses; // Devuelve la lista de cursos
+  } catch (error) {
+    // En un entorno de producción, manejarías el error más apropiadamente
+    console.error("Error al obtener los cursos:", error);
+    throw error;
+  }
+};
+// Función para eliminar un curso
+const deleteCourse = async (id) => {
+  try {
+    const response = await fetch(`${BASE_URL}/courses/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || "Error al eliminar el curso");
+    }
+    // No necesitamos el contenido de la respuesta, solo confirmar que fue exitoso
+    return true;
+  } catch (error) {
+    console.error("Error al eliminar el curso:", error);
+    throw error;
+  }
+};
+// Función para añadir o editar un curso en el backend
+const saveCourse = async (course, id) => {
+  const url = id ? `${BASE_URL}/courses/${id}` : `${BASE_URL}/courses`;
+  const method = id ? "PUT" : "POST";
+
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(course),
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.text(); // Obtener el texto del error si la respuesta no fue exitosa
+      throw new Error(
+        errorResult || `Error al ${id ? "editar" : "añadir"} el curso`
+      );
+    }
+
+    const result = await response.json(); // Esperar a que la promesa se resuelva y obtener el JSON
+    return result;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
 
 const CoursesScreen = () => {
-  const [courses, setCourses] = useState(mockCourses); // Estado para la lista de cursos
+  const [courses, setCourses] = useState([]);
   const [modalVisible, setModalVisible] = useState(false); // Estado para la visibilidad del modal
   const [currentCourse, setCurrentCourse] = useState(null); // Estado para el curso actual en edición
+  const [courseName, setCourseName] = useState("");
+  const [courseDescription, setCourseDescription] = useState("");
+  const [courseId, setCourseId] = useState(null); // Nuevo estado para el Id del curso
+
+  // Función para actualizar la lista de cursos desde el servidor
+  const updateCoursesList = async () => {
+    try {
+      const fetchedCourses = await getCourses();
+      setCourses(fetchedCourses);
+    } catch (error) {
+      Alert.alert("Error", "No se pudo cargar la lista de cursos.");
+      console.error("Error al cargar los cursos:", error);
+    }
+  };
+
+  // Llamada en useEffect para cargar cursos inicialmente
+  useEffect(() => {
+    updateCoursesList();
+  }, []);
+  // Funcion para submit cursos
+
+  // Función para manejar el envío del formulario del modal
+  const handleSubmit = async () => {
+    if (!courseName || !courseDescription) {
+      Alert.alert("Error", "Por favor ingrese todos los campos.");
+      return;
+    }
+
+    try {
+      const courseData = {
+        Name: courseName,
+        Description: courseDescription,
+        // No necesitamos enviar el Id al backend cuando creamos un nuevo curso
+        ...(courseId && { Id: courseId }),
+      };
+
+      // Utilizaremos courseId para determinar si estamos añadiendo o editando
+      const savedCourse = await saveCourse(courseData, courseId);
+
+      // Actualiza la lista de cursos desde el servidor
+      await updateCoursesList();
+
+      setModalVisible(false);
+    } catch (error) {
+      Alert.alert("Error", error.message);
+    } finally {
+      resetForm();
+    }
+  };
+
+  const resetForm = () => {
+    setCurrentCourse(null);
+    setCourseName("");
+    setCourseDescription("");
+    setCourseId(null); // Resetear el Id del curso
+  };
 
   // Funciones para manejar el CRUD
   const handleAddCourse = () => {
-    // Aquí lógica para añadir un nuevo curso
     console.log("Añadir nuevo curso");
+    resetForm();
     setModalVisible(true);
-    setCurrentCourse(null); // Limpiar el curso actual para el modal de añadir
   };
 
   const handleEditCourse = (course) => {
-    // Aquí lógica para editar un curso
-    console.log("Editar curso", course.id);
+    console.log("Editar curso", course);
+    console.log("Editar curso", course.Id);
+
+    setCurrentCourse(course);
+    setCourseName(course.Name);
+    setCourseDescription(course.Description);
+    setCourseId(course.Id); // Actualizamos el Id del curso
     setModalVisible(true);
-    setCurrentCourse(course); // Establecer el curso actual para el modal de edición
   };
 
-  const handleDeleteCourse = (courseId) => {
-    // Aquí lógica para eliminar un curso
-    console.log("Eliminar curso", courseId);
-    // Implementar la lógica para eliminar el curso del estado y del backend
+  const handleDeleteCourse = async (course_Id) => {
+    console.log("Eliminar curso", course_Id);
+    try {
+      await deleteCourse(course_Id);
+      await updateCoursesList();
+      Alert.alert(
+        "Curso eliminado",
+        "El curso ha sido eliminado exitosamente."
+      );
+    } catch (error) {
+      Alert.alert("Error", "No se pudo eliminar el curso.");
+    }
   };
 
   // Render Item para FlatList
   const renderCourse = ({ item }) => (
     <View style={styles.courseItem}>
-      <Text style={styles.courseTitle}>{item.name}</Text>
-      <Text>{item.description}</Text>
+      <Text style={styles.courseTitle}>{item.Name}</Text>
+      <Text>{item.Description}</Text>
       <View style={styles.buttonsContainer}>
         <PrincipalButton
           title="Editar"
@@ -60,7 +184,7 @@ const CoursesScreen = () => {
         />
         <PrincipalButton
           title="Eliminar"
-          onPress={() => handleDeleteCourse(item.id)}
+          onPress={() => handleDeleteCourse(item.Id)}
           color="red"
         />
       </View>
@@ -73,7 +197,7 @@ const CoursesScreen = () => {
       <FlatList
         data={courses}
         renderItem={renderCourse}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.Id}
       />
       {/* Modal para añadir/editar curso */}
       <Modal
@@ -89,20 +213,20 @@ const CoursesScreen = () => {
           <View style={styles.modalView}>
             <TextInput
               placeholder="Nombre del Curso"
-              // Aquí lógica para manejar el nombre del curso
+              value={courseName}
+              onChangeText={setCourseName}
               placeholderTextColor="black" // Esta línea cambia el color del placeholder a negro
             />
             <TextInput
               placeholder="Descripción del Curso"
+              value={courseDescription}
+              onChangeText={setCourseDescription}
               placeholderTextColor="black" // Esta línea cambia el color del placeholder a negro
-
-              // Aquí lógica para manejar la descripción del curso
             />
             <PrincipalButton
-              title="Guardar"
+              title={currentCourse ? "Editar" : "Añadir"}
               onPress={() => {
-                // Aquí lógica para guardar el curso
-                setModalVisible(!modalVisible);
+                setModalVisible(handleSubmit);
               }}
             />
           </View>
