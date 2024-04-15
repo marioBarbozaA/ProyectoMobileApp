@@ -24,7 +24,7 @@ export const updateStudentCourses = async (req, res) => {
       const insertRequest = new sql.Request(transaction);
 
       // Construye la consulta para insertar las nuevas asociaciones.
-      const values = CourseIds.map((id) => `(${studentId}, ${id})`).join(",");
+      const values = CourseIds.map((Id) => `(${studentId}, ${Id})`).join(",");
       await insertRequest.query(`
           INSERT INTO [Universidad].[dbo].[CoursesXStudent] (StudentId, CourseId)
           VALUES ${values};
@@ -39,5 +39,27 @@ export const updateStudentCourses = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Error del servidor", error });
+  }
+};
+export const getCoursesByStudent = async (req, res) => {
+  const { studentId } = req.params; // Obtiene el ID del estudiante desde los parámetros de la ruta
+
+  try {
+    const pool = await getConeccion();
+    const result = await pool.request().input("StudentId", sql.Int, studentId)
+      .query(`
+              SELECT c.Id, c.Name, c.Description
+              FROM CoursesXStudent cx
+              JOIN Courses c ON cx.CourseId = c.Id
+              WHERE cx.StudentId = @StudentId;
+          `);
+
+    // Siempre devuelve una respuesta con estado 200 y un arreglo (que puede estar vacío)
+    res.json(result.recordset);
+  } catch (error) {
+    console.error("Error retrieving courses by student: ", error);
+    res
+      .status(500)
+      .json({ message: "Error retrieving courses by student", error });
   }
 };

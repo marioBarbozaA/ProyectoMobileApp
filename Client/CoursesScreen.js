@@ -3,9 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   FlatList,
-  Button,
   Alert,
   Modal,
   TextInput,
@@ -13,12 +11,12 @@ import {
 import PrincipalButton from "./components/PrincipalButton";
 
 // URL FOR THE CONECCTION WITH THE SERVER
-const BASE_URL = "http://192.168.100.15:3000"; /// Con la IP del Wifi que esta conectado
+export const BASE_URL = "http://192.168.100.15:3000"; /// Con la IP del Wifi que esta conectado
 
 //CRUDS
 
 // Función para obtener todos los cursos desde la API
-const getCourses = async () => {
+export const getCourses = async () => {
   try {
     const response = await fetch(`${BASE_URL}/courses`);
     if (!response.ok) {
